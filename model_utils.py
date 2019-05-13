@@ -19,19 +19,18 @@ def build_model(args, output_size, device):
     for param in model.parameters():
         param.requires_grad = False
 
-    classifier = nn.Sequential(OrderedDict([('fc1', nn.Linear(features_output_size, args.hidden_units)), 
+    model.classifier = nn.Sequential(OrderedDict([('fc1', nn.Linear(features_output_size, args.hidden_units)), 
                                                 ('relu', nn.ReLU()),
                                                 ('dropout', nn.Dropout(0.2)),
                                                 ('fc3', nn.Linear(args.hidden_units, output_size)),
                                                 ('output', nn.LogSoftmax(dim=1))]))
-    model.classifier = classifier
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr = args.learning_rate)
     model.to(device)
     return model, criterion, optimizer
 
 def train_model(args, model, criterion, optimizer, dataloaders, device):
-    validate_every = 2
+    print_every = 100
     running_loss = 0
     steps = 0
     with active_session():
@@ -45,7 +44,7 @@ def train_model(args, model, criterion, optimizer, dataloaders, device):
                 loss.backward()
                 optimizer.step()
                 steps += 1
-                if steps % validate_every == 0:
+                if steps % print_every == 0:
                     with torch.no_grad():
                         model.eval()
                         accuracy = 0
@@ -61,18 +60,18 @@ def train_model(args, model, criterion, optimizer, dataloaders, device):
                             top_p, top_class = ps.topk(1, dim=1)
                             equals = top_class == labels.view(*top_class.shape)
                             accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
-                        print(f"Epoch {epoch+1}/{epochs}.. "
+                        print(f"Epoch {epoch+1}/{args.epochs}.. "
                           f"Train loss: {running_loss/print_every:.3f}.. "
                           f"Validation loss: {valid_loss/len(dataloaders['validate']):.3f}.. "
                           f"Validation accuracy: {accuracy/len(dataloaders['validate']):.3f}")      
                         running_loss = 0
                         model.train()
                         
-def test_model(model, criterion,  dataloaders, device)
+def test_model(model, criterion,  dataloaders, device):
     with torch.no_grad():
         testing_loss = 0
         accuracy = 0
-        for images, labels in test_dataloader:
+        for images, labels in dataloaders['test']:
             model.eval()
             images, labels = images.to(device), labels.to(device)
             log_ps = model(images)
@@ -83,6 +82,6 @@ def test_model(model, criterion,  dataloaders, device)
             equals = top_class == labels.view(*top_class.shape)
             accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
         print(f"Test loss: {testing_loss/len(dataloaders['test']):.3f}.. "
-                          f"Test accuracy: {accuracy/len(dataloaders['train']):.3f}")
+                          f"Test accuracy: {accuracy/len(dataloaders['test']):.3f}")
     
     

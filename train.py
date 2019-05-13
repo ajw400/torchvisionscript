@@ -19,6 +19,7 @@ parser.add_argument('--hidden_units', nargs='?', default=512, type=int, help='sp
 parser.add_argument('--gpu', default=False, action='store_true', help='add this flag to train on GPU!')
 args = parser.parse_args()
 
+print("Creating model....")
 device = torch.device("cuda" if args.gpu and torch.cuda.is_available() else "cpu")
 dataloaders = utils.create_dataloaders(args.data_dir[0])
 
@@ -27,9 +28,10 @@ with open('cat_to_name.json', 'r') as f:
 output_length = len(cat_to_name)
 
 model, criterion, optimizer = model_utils.build_model(args, output_length, device)
-
+print("Model built successfully!")
+print("Training model...")
 model_utils.train_model(args, model, criterion, optimizer, dataloaders, device)
 print("Model training finished!")
-print("Now testing...")
+print("Testing model...")
 model_utils.test_model(model, criterion, dataloaders, device)
 # model_utils.save_model
