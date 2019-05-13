@@ -4,6 +4,7 @@ from torch import nn, optim
 import torch
 from collections import OrderedDict
 from workspace_utils import active_session
+import json
 
 def build_model(args, output_size, device):
     # TODO: Build and train your network
@@ -85,3 +86,46 @@ def test_model(model, criterion,  dataloaders, device):
                           f"Test accuracy: {accuracy/len(dataloaders['test']):.3f}")
     
     
+def save_checkpoint(args, model, optimizer, dataloaders):
+    save_path = args.save_dir + 'checkpoint.pth'
+    checkpoint = {'classifier': model.classifier, 
+                  'model_name': args.arch,
+                  'class_to_idx': dataloaders['class_to_idx'],
+                  'optimizer_state': optimizer.state_dict(),
+                  'state_dict': model.state_dict(),
+                  'output_size': len(dataloaders['class_to_idx'])}
+    torch.save(checkpoint, save_path)
+
+def load_checkpoint(args):
+    device = "cuda" if args.gpu else "cpu"
+    checkpoint = torch.load(args.checkpoint[0], map_location=lambda storage, loc: storage)
+    if checkpoint['model_name'] == 'densenet121':
+        model = models.densenet121(pretrained=True)
+    elif checkpoint['model_name'] == 'vgg13':
+        model = models.vgg13(pretrained=True)
+    else:
+        print("Model not supported!")
+    model.classifier = checkpoint['classifier']
+    model.class_to_idx = checkpoint['class_to_idx']
+    model.load_state_dict(checkpoint['state_dict'])
+    return model
+
+def predict(model, image, args):
+    device = torch.device("cuda" if torch.cuda.is_available() and args.gpu else "cpu")
+    with torch.no_grad():
+        model.eval()
+        model.to(device)
+        image = image.to(device)
+        log_ps = model(image)
+        ps = torch.exp(log_ps)
+        top_p, top_classes = ps.topk(args.topk)
+        top_p, top_classes = top_p.cpu().numpy().flatten().tolist(), top_classes.cpu().numpy().flatten()
+        idx_to_class = dict(map(reversed, model.class_to_idx.items()))
+        output_classes = list(map(lambda x: idx_to_class[x], top_classes))
+        class_names = None
+        if args.category_names:
+            with open('cat_to_name.json', 'r') as f:
+                cat_to_name = json.load(f)
+                class_names = list(map(lambda x: cat_to_name[x], output_classes))
+    return top_p, output_classes, class_names
+                         

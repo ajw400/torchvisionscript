@@ -9,7 +9,7 @@ import json
 #take arguments from the command line and store in args array
 parser = argparse.ArgumentParser(description='Train a deep learning model with a dataset of your choice!')
 parser.add_argument('data_dir', help='data directory path', nargs=1)
-parser.add_argument('--save_dir', nargs='?', default=None,
+parser.add_argument('--save_dir', nargs='?', default="",
                     help='specify a directory where you\'d like to save the checkpoint')
 parser.add_argument('--arch', nargs='?', choices=['vgg13', 'densenet121'], default='densenet121',
                     help='specify the architecture you would like to use')
@@ -22,16 +22,17 @@ args = parser.parse_args()
 print("Creating model....")
 device = torch.device("cuda" if args.gpu and torch.cuda.is_available() else "cpu")
 dataloaders = utils.create_dataloaders(args.data_dir[0])
-
-with open('cat_to_name.json', 'r') as f:
-    cat_to_name = json.load(f)
-output_length = len(cat_to_name)
-
+output_length = len(dataloaders['class_to_idx'])
 model, criterion, optimizer = model_utils.build_model(args, output_length, device)
 print("Model built successfully!")
+
 print("Training model...")
 model_utils.train_model(args, model, criterion, optimizer, dataloaders, device)
 print("Model training finished!")
+
 print("Testing model...")
 model_utils.test_model(model, criterion, dataloaders, device)
-# model_utils.save_model
+
+print("Saving model...")
+model_utils.save_checkpoint(args, model, optimizer, dataloaders)
+print("Model saved!")
