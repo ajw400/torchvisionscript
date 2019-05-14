@@ -124,7 +124,7 @@ def predict(model, image, args):
         output_classes = list(map(lambda x: idx_to_class[x], top_classes))
         class_names = None
         if args.category_names:
-            with open('cat_to_name.json', 'r') as f:
+            with open(args.category_names, 'r') as f:
                 cat_to_name = json.load(f)
                 class_names = list(map(lambda x: cat_to_name[x], output_classes))
     return top_p, output_classes, class_names
